@@ -34,7 +34,7 @@ library(batchelor)
 ```
 
 ```{r}
-filtered_scae_list <- readRDS("scae.Rds")
+filtered_scae_list <- readRDS("../intermediate_files/scae.Rds")
 ```
 
 # Merging & batch correction
@@ -127,11 +127,11 @@ plot_grid(p1, p2, ncol = 2)
 scae_com <- multiBatchNorm(scae_com, batch = scae_com$Sample, normalize.all = TRUE, 
                            subset.row = c(rownames(scae_com[rowData(scae_com)$NI_I == "NI"], rownames(scae_com[rowData(scae_com)$Quant_type == "A"]))))
 
-# saveRDS(scae_com, "scae_com.Rds")
+# saveRDS(scae_com, "../intermediate_files/scae_com.Rds")
 ```
 
 ```{r}
-scae_com <- readRDS("scae_com.Rds")
+scae_com <- readRDS("../intermediate_files/scae_com.Rds")
 
 colData(scae_com)$Sample <- factor(colData(scae_com)$Sample, levels = c("pbmc_preRx", "pbmc_postRx", "tumor_preRx", "tumor_postRx"))
 

@@ -35,7 +35,7 @@ library(scales)
 
 ```{r scae, message=FALSE}
 read_scae <- function(folder_path){
-  folder_name <- gsub("data/", "", folder_path)
+  folder_name <- gsub("../data/", "", folder_path)
   counts <- read_allele_counts(folder_path,
                                lookup_file = read.csv(file.path(folder_path, "lookup_table_HLA.csv")),
                                sample_names = folder_name,
@@ -46,7 +46,7 @@ read_scae <- function(folder_path){
 }
 
 scae_list <- lapply(c("pbmc_preRx_extra"), function(donor){
-  read_scae(file.path("data", donor)) 
+  read_scae(file.path("../data", donor)) 
 })
 ```
 
