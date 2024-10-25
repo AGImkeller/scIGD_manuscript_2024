@@ -6,9 +6,9 @@ They are used to generate the figures in the paper.
 
 Data analysis was performed on:
 -------------------------------
-R version 4.4.1 (2024-06-14)
-Platform: x86_64-pc-linux-gnu
-Running under: Ubuntu 20.04.6 LTS
+- R version 4.4.1 (2024-06-14)
+- Platform: x86_64-pc-linux-gnu
+- Running under: Ubuntu 20.04.6 LTS
 
 The R packages/software used:
 -----------------------------
