@@ -1,0 +1,242 @@
+---
+title: "scIGD on Multiple Myeloma"
+author: "Ahmad Al Ajami"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    keep_md: false
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+suppressPackageStartupMessages({
+library(Matrix)
+library(tidyverse)
+library(Biostrings)
+library(readr)  
+library(cowplot)
+library(pheatmap)
+library(patchwork)
+library(scater)
+library(scran)
+})
+```
+
+Loading sample-tag count matrix:
+
+```{r}
+tags <- readMM("data/sample_tag/cells_x_features.mtx")
+cells <- read.table("data/sample_tag/cells_x_features.barcodes.txt", header = FALSE)
+rownames(tags) <- cells$V1
+colnames(tags) <- paste("D", 1:12, sep = "")
+```
+
+Loading gene-level count matrix:
+
+```{r gene_level_mtx}
+gene_mtx <- readMM("data/gene_level/cells_x_genes.mtx")
+cells <- read.table("data/gene_level/cells_x_genes.barcodes.txt", header = FALSE)
+genes <- read.table("data/gene_level/cells_x_genes.genes.txt", header = FALSE)
+rownames(gene_mtx) <- cells$V1
+colnames(gene_mtx) <- genes$V1
+
+gene_mtx <- as(gene_mtx, "dgCMatrix")
+tot_counts <- rowSums(gene_mtx)
+df <- tibble(cells = rownames(gene_mtx),
+             total = tot_counts,
+             rank = row_number(dplyr::desc(total))) %>%
+  distinct() %>%
+  arrange(rank)
+
+ggplot(df, aes(total, rank)) +
+  geom_path() +
+  scale_x_log10() + scale_y_log10() + annotation_logticks() +
+  labs(y = "Barcode rank", x = "Total UMI count")
+
+gene_mtx <- gene_mtx[rowSums(gene_mtx) > 300, ]
+
+gene_tags <- tags[intersect(rownames(tags), rownames(gene_mtx)), ]
+gene_tags <- as(gene_tags, "dgCMatrix")
+gene.dom.tags <- data.frame(Cellular.Barcode = rownames(gene_tags),
+                            Sample.Tag = ifelse(rowMaxs(gene_tags) >= 0.7 * rowSums(gene_tags),
+                                                colnames(gene_tags)[max.col(gene_tags)],
+                                                "Multiplet"))
+
+gene_mtx <- gene_mtx[intersect(rownames(gene_tags), rownames(gene_mtx)), ]
+
+sce_gene <- SingleCellExperiment(assays = list(counts = t(gene_mtx)), colData = gene.dom.tags)
+sce_gene <- sce_gene[, !sce_gene$Sample.Tag %in% c("Multiplet")]
+
+sce_gene$Sample.Tag[sce_gene$Sample.Tag == "D9"] <- "D5"
+sce_gene$Sample.Tag[sce_gene$Sample.Tag == "D10"] <- "D6"
+sce_gene$Sample.Tag[sce_gene$Sample.Tag == "D11"] <- "D7"
+sce_gene$Sample.Tag[sce_gene$Sample.Tag == "D12"] <- "D8"
+
+sce_gene <- logNormCounts(sce_gene)
+
+set.seed(42L)
+sce_gene <- runPCA(sce_gene, ncomponents=20)
+sce_gene <- runTSNE(sce_gene, dimred="PCA")
+plotTSNE(sce_gene, colour_by="Sample.Tag")
+```
+
+Loading allele-level count matrix:
+
+```{r allele_level_mtx}
+allele_mtx <- readMM("data/allele_level/cells_x_genes.mtx")
+cells <- read.table("data/allele_level/cells_x_genes.barcodes.txt", header = FALSE)
+genes <- read.table("data/allele_level/cells_x_genes.genes.txt", header = FALSE)
+rownames(allele_mtx) <- cells$V1
+colnames(allele_mtx) <- genes$V1
+
+allele_mtx <- as(allele_mtx, "dgCMatrix")
+tot_counts <- rowSums(allele_mtx)
+df <- tibble(cells = rownames(allele_mtx),
+             total = tot_counts,
+             rank = row_number(dplyr::desc(total))) %>%
+  distinct() %>%
+  arrange(rank)
+
+ggplot(df, aes(total, rank)) +
+  geom_path() +
+  scale_x_log10() + scale_y_log10() + annotation_logticks() +
+  labs(y = "Barcode rank", x = "Total UMI count")
+
+allele_mtx <- allele_mtx[rowSums(allele_mtx) > 300, ]
+
+allele_tags <- tags[intersect(rownames(tags), rownames(allele_mtx)), ]
+allele_tags <- as(allele_tags, "dgCMatrix")
+allele.dom.tags <- data.frame(Cellular.Barcode = rownames(allele_tags),
+                              Sample.Tag = ifelse(rowMaxs(allele_tags) >= 0.7 * rowSums(allele_tags),
+                                                  colnames(allele_tags)[max.col(allele_tags)],
+                                                  "Multiplet"))
+
+allele_mtx <- allele_mtx[intersect(rownames(allele_tags), rownames(allele_mtx)), ]
+
+sce_allele <- SingleCellExperiment(assays = list(counts = t(allele_mtx)), colData = allele.dom.tags)
+sce_allele <- sce_allele[, !sce_allele$Sample.Tag %in% c("Multiplet")]
+
+sce_allele$Sample.Tag[sce_allele$Sample.Tag == "D9"] <- "D5"
+sce_allele$Sample.Tag[sce_allele$Sample.Tag == "D10"] <- "D6"
+sce_allele$Sample.Tag[sce_allele$Sample.Tag == "D11"] <- "D7"
+sce_allele$Sample.Tag[sce_allele$Sample.Tag == "D12"] <- "D8"
+
+sce_allele <- logNormCounts(sce_allele)
+```
+
+Adding allele-level count matrix as an altExp into the gene-level count matrix sce:
+
+```{r}
+sce <- sce_gene
+sce <- sce[, intersect(colnames(sce), colnames(sce_allele))]
+altExp(sce, "allele-level") <- sce_allele
+reducedDim(altExp(sce), "TSNE") <- reducedDim(sce, "TSNE")
+```
+
+```{r}
+p1 <- plotExpression(sce, "HLA-C", x = "Sample.Tag") + 
+  #labs(y = "expression (logcounts)") + 
+  theme_bw() +
+  theme(strip.text = element_text(size = 14),
+        axis.title.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 14),
+        axis.text.y = element_text(size = 14))
+```
+
+```{r}
+p2 <- plotExpression(altExp(sce), "HLA-C-ST3,4", x = "Sample.Tag") +
+  facet_wrap(~ Feature, labeller = as_labeller(c("HLA-C-ST3,4" = "Allele I"))) +
+  labs(y = "expression (logcounts)") + 
+  theme_bw() +
+  theme(strip.text = element_text(size = 14),
+        axis.title.x=element_blank(),
+        axis.title.y=element_text(size = 14),
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 14),
+        axis.text.y = element_text(size = 14))
+
+p3 <- plotExpression(altExp(sce), "HLA-C-ST1,9,11", x = "Sample.Tag") +
+  facet_wrap(~ Feature, labeller = as_labeller(c("HLA-C-ST1,9,11" = "Allele II"))) +
+  theme_bw() +
+  theme(strip.text = element_text(size = 14),
+        axis.title.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 14),
+        axis.text.y = element_text(size = 14))
+
+suppfig1c <- plot_grid(p2, p3, p1, align = "hv", nrow = 1)
+
+ggsave("Suppfig1c.pdf", suppfig1c, height = 3, width = 9)
+save(suppfig1c, file = "suppfig1c.RData")
+```
+
+Studying the correlation between HLA-C gene and its respective alleles counts in one donor:
+
+```{r}
+gene_st <- sce[, sce$Sample.Tag == "D1"]
+allele_st <- altExp(sce)[, altExp(sce)$Sample.Tag == "D1"]
+  
+gene_st <- gene_st[, intersect(colnames(gene_st), colnames(allele_st))]
+allele_st <- allele_st[, intersect(colnames(gene_st), colnames(allele_st))]
+
+hlac_gene <- counts(gene_st["HLA-C", ])
+summ <- summary(hlac_gene)
+hlac_gene <- data.frame(Gene = rownames(hlac_gene)[summ$i],
+                        Cell = colnames(hlac_gene)[summ$j],
+                        Gene_Expression = summ$x) %>%
+  remove_rownames %>%
+  column_to_rownames(var="Cell")
+  
+hlac_allele <- counts(allele_st[c("HLA-C-ST1,2,4,9,10,11,12", "HLA-C-ST1,9,11", "HLA-C-STall"), ])
+hlac_allele_sum <- hlac_allele %>% colSums() %>% as.data.frame()
+colnames(hlac_allele_sum) <- "Allele_Expression"
+hlac_allele_sum$Allele <- "HLA-C"
+  
+hlac_gene <- hlac_gene[intersect(rownames(hlac_gene), rownames(hlac_allele_sum)), ]
+hlac_allele_sum <- hlac_allele_sum[intersect(rownames(hlac_gene), rownames(hlac_allele_sum)), ]
+hlac_expression_sum <- cbind(hlac_gene, hlac_allele_sum)
+
+# calculating correlation coefficient using Pearson or Spearman
+correlation_pearson <- cor(hlac_expression_sum$Allele_Expression, hlac_expression_sum$Gene_Expression, method = "pearson") %>% round(., digits = 2)
+correlation_spearman <- cor(hlac_expression_sum$Allele_Expression, hlac_expression_sum$Gene_Expression, method = "spearman") %>% round(., digits = 2)
+correlation <- paste("Pearson:", correlation_pearson,
+                     "\nSpearman:", correlation_spearman)
+  
+p1 <- ggplot(hlac_expression_sum, aes(x = Allele_Expression, y = Gene_Expression)) +
+  geom_point(color = "blue") +
+  geom_smooth(method = "lm", color = "red", se = FALSE) +
+  labs(subtitle = "HLA-C",
+       x = "expression in scIGD",
+       y = "expression in kallisto") +
+  theme_bw() + 
+  theme(plot.subtitle = element_text(size = 14),
+        axis.title.x=element_text(size = 14),
+        axis.title.y=element_text(size = 14),
+        axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 14))
+
+suppfig1d <- p1 + annotate("text", x =  200, y = 100,
+              label = correlation, 
+              hjust = 0, vjust = -0.2, 
+              size = 4, 
+              color = "red")
+
+ggsave("suppfig1d.pdf", suppfig1d, height = 4, width = 4)
+save(suppfig1d, file = "suppfig1d.RData")
+```
+
+# Session
+
+```{r sessionInfo, cache = 0}
+date()
+sessionInfo()
+
+knitr::knit_exit()
+```
