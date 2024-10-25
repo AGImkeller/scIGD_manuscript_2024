@@ -26,7 +26,7 @@ library(immunotation)
 ```
 
 ```{r}
-filtered_scae_list <- readRDS("scae.Rds")
+filtered_scae_list <- readRDS("../intermediate_files/scae.Rds")
 ```
 
 # Korean
