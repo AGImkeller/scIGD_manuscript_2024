@@ -32,8 +32,8 @@ library(scran)
 Loading sample-tag count matrix:
 
 ```{r}
-tags <- readMM("data/sample_tag/cells_x_features.mtx")
-cells <- read.table("data/sample_tag/cells_x_features.barcodes.txt", header = FALSE)
+tags <- readMM("../data/sample_tag/cells_x_features.mtx")
+cells <- read.table("../data/sample_tag/cells_x_features.barcodes.txt", header = FALSE)
 rownames(tags) <- cells$V1
 colnames(tags) <- paste("D", 1:12, sep = "")
 ```
@@ -41,9 +41,9 @@ colnames(tags) <- paste("D", 1:12, sep = "")
 Loading gene-level count matrix:
 
 ```{r gene_level_mtx}
-gene_mtx <- readMM("data/gene_level/cells_x_genes.mtx")
-cells <- read.table("data/gene_level/cells_x_genes.barcodes.txt", header = FALSE)
-genes <- read.table("data/gene_level/cells_x_genes.genes.txt", header = FALSE)
+gene_mtx <- readMM("../data/gene_level/cells_x_genes.mtx")
+cells <- read.table("../data/gene_level/cells_x_genes.barcodes.txt", header = FALSE)
+genes <- read.table("../data/gene_level/cells_x_genes.genes.txt", header = FALSE)
 rownames(gene_mtx) <- cells$V1
 colnames(gene_mtx) <- genes$V1
 
@@ -90,9 +90,9 @@ plotTSNE(sce_gene, colour_by="Sample.Tag")
 Loading allele-level count matrix:
 
 ```{r allele_level_mtx}
-allele_mtx <- readMM("data/allele_level/cells_x_genes.mtx")
-cells <- read.table("data/allele_level/cells_x_genes.barcodes.txt", header = FALSE)
-genes <- read.table("data/allele_level/cells_x_genes.genes.txt", header = FALSE)
+allele_mtx <- readMM("../data/allele_level/cells_x_genes.mtx")
+cells <- read.table("../data/allele_level/cells_x_genes.barcodes.txt", header = FALSE)
+genes <- read.table("../data/allele_level/cells_x_genes.genes.txt", header = FALSE)
 rownames(allele_mtx) <- cells$V1
 colnames(allele_mtx) <- genes$V1
 
