@@ -1,0 +1,258 @@
+---
+title: "scIGD on Merkel Cell Carcinoma"
+author: "Ahmad Al Ajami"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    keep_md: false
+    toc: true
+    toc_float: true
+    toc_depth: 5
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, include=TRUE, message=FALSE, cache = FALSE}
+suppressPackageStartupMessages({
+library(SingleCellAlleleExperiment)
+library(tidyverse)
+library(gridExtra)
+library(DropletUtils)
+library(BiocParallel)
+library(Matrix)
+library(AnnotationHub)
+library(cowplot)
+library(scran)
+library(scater)
+library(pheatmap)
+library(CATALYST)
+library(batchelor)
+})
+```
+
+```{r}
+filtered_scae_list <- readRDS("scae.Rds")
+```
+
+# Merging & batch correction
+
+```{r, warning=FALSE}
+# determine variance components for each object separately
+dec_list <- lapply(filtered_scae_list, function(scae){
+  dec <- modelGeneVar(scae)
+})
+```
+
+```{r}
+# common genes
+universe <- filtered_scae_list %>% map(~ rownames(.[rowData(.)$Quant_type == "G", ])) %>% Reduce(intersect, .)
+
+# subsetting the objects
+filtered_scae_list <- lapply(filtered_scae_list, function(scae){
+  scae <- scae[c(universe, rownames(scae[rowData(scae)$Quant_type == "A", ]), rownames(scae[rowData(scae)$Quant_type == "F", ])), ]
+})
+
+# finding common hvg between objects
+dec_list <- lapply(dec_list, function(dec){
+  dec <- dec[universe, ]
+})
+
+combined.dec <- do.call(combineVar, dec_list)
+chosen.hvgs <- combined.dec$bio > 0
+sum(chosen.hvgs)
+```
+
+```{r}
+# preparing data to merge
+filtered_scae_list <- map(filtered_scae_list, function(scae) {
+  rowData(scae) <- rowData(scae)[, !colnames(rowData(scae)) %in% "scDblFinder.selected"]
+  return(scae)
+})
+
+# merging the objects
+scae_com <- do.call(SingleCellExperiment::cbind, filtered_scae_list)
+scae_com$Sample <- sub("_gen", "", scae_com$Sample)
+```
+
+## Before
+
+```{r}
+scae_com_before <- runPCA(scae_com, subset_row=chosen.hvgs, BSPARAM=BiocSingular::RandomParam())
+scae_com_before <- runTSNE(scae_com_before, dimred="PCA")
+scae_com_before <- runUMAP(scae_com_before, dimred="PCA")
+
+p1 <- plotTSNE(scae_com_before, colour_by="Sample")
+p2 <- plotUMAP(scae_com_before, colour_by="Sample") 
+plot_grid(p1, p2, ncol = 2)
+```
+
+## After
+
+```{r}
+set.seed(42L)
+
+chosen.hvgs <- rownames(combined.dec)[combined.dec$bio > 0]
+
+# batch correction
+scae_com <- correctExperiments(scae_com, batch = scae_com$Sample, 
+                               subset.row = chosen.hvgs, correct.all = TRUE,
+                               PARAM=FastMnnParam(BSPARAM=BiocSingular::RandomParam()))
+
+# reduced dim
+scae_com <- runTSNE(scae_com, dimred="corrected")
+scae_com <- runUMAP(scae_com, dimred="corrected")
+
+p1 <- plotTSNE(scae_com, colour_by="Sample")
+p2 <- plotUMAP(scae_com, colour_by="Sample") 
+plot_grid(p1, p2, ncol = 2)
+
+# clustering
+snn_graph <- buildSNNGraph(scae_com, k=50, use.dimred='corrected')
+igraph_clusters <- igraph::cluster_louvain(snn_graph)$membership
+scae_com$cluster_id <- as.factor(igraph_clusters)
+
+p1 <- plotTSNE(scae_com, colour_by="cluster_id")
+p2 <- plotUMAP(scae_com, colour_by="cluster_id") 
+plot_grid(p1, p2, ncol = 2)
+```
+
+# Downstream analysis
+
+## HLA class I
+
+```{r}
+scae_com <- multiBatchNorm(scae_com, batch = scae_com$Sample, normalize.all = TRUE, 
+                           subset.row = c(rownames(scae_com[rowData(scae_com)$NI_I == "NI"], rownames(scae_com[rowData(scae_com)$Quant_type == "A"]))))
+
+# saveRDS(scae_com, "scae_com.Rds")
+```
+
+```{r}
+scae_com <- readRDS("scae_com.Rds")
+
+colData(scae_com)$Sample <- factor(colData(scae_com)$Sample, levels = c("pbmc_preRx", "pbmc_postRx", "tumor_preRx", "tumor_postRx"))
+
+fig4a <- plotReducedDim(scae_com, dimred = "TSNE", by_exprs_values = "logcounts", colour_by = "HLA_class_I", other_fields = "Sample") +
+  theme_bw() +
+  scale_colour_gradient2(name = "HLA_class_I",
+                         low = "lightblue",
+                         mid = "lightblue",
+                         high = "darkred",
+                         guide = "colourbar") +
+  facet_wrap(~ Sample, ncol = 4) +
+  theme(strip.text = element_text(size = 14),
+        axis.title.x=element_text(size = 14),
+        axis.title.y=element_text(size = 14),
+        axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 14),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 14))
+
+ggsave("Fig4a.pdf", fig4a, height = 4, width = 16)
+save(fig4a, file = "fig4a.RData")
+```
+
+## Immune features expression
+
+```{r, fig.asp=1}
+immune_features <- rownames(scae_com[rowData(scae_com)$NI_I == "I", ])
+
+plotDR(scae_com, color_by = immune_features, dr = "TSNE", assay = "reconstructed") + 
+  geom_point(size = 0.5) +
+  ggtitle("barch correction")
+
+plotDR(scae_com, color_by = immune_features, dr = "TSNE", assay = "logcounts") + 
+  geom_point(size = 0.5) + 
+  ggtitle("multibatchnorm logcounts")
+```
+
+## Cluster-specific marker expression
+
+```{r}
+scae_com <- scae_com[rownames(scae_com)[!is.na(rowData(scae_com)$Symbol)], ]
+rownames(scae_com) <- rowData(scae_com)$Symbol
+markers <- findMarkers(scae_com, groups=scae_com$cluster_id)
+mark_per_clus <- sapply(markers, function(u){
+  genes <- rownames(u[u$Top %in% 1:2, ])})
+umarks <- unique(unlist(mark_per_clus))
+plotGroupedHeatmap(scae_com, features=umarks, group="cluster_id",
+                   center=TRUE, zlim=c(-2, 2), cluster_rows = FALSE, 
+                   treeheight_col = 5, fontsize=8)
+```
+
+## Cluster-specific allele expression
+
+### Heatmap & Violin plots
+
+```{r}
+alleles <- rownames(scae_com[rowData(scae_com)$Quant_type == "A"])
+
+# heatmap
+plotGroupedHeatmap(scae_com, features=alleles, group="Sample",
+                   center=TRUE, scale=FALSE, cluster_rows=FALSE,
+                   treeheight_col=5, fontsize=8)
+  # violin
+plotExpression(scae_com, alleles, other_fields="Sample") +
+    facet_wrap(vars(!!sym("Sample"))) +
+    theme_bw() +
+    theme(axis.text = element_text(size = 5),
+          axis.title = element_text(size = 8, face = "bold"),  
+          axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+# heatmap
+plotGroupedHeatmap(scae_com, features=alleles, group="cluster_id",
+                   center=TRUE, scale=FALSE, cluster_rows=FALSE,
+                   treeheight_col=5, fontsize=8)
+  # violin
+plotExpression(scae_com, alleles, other_fields="cluster_id") +
+    facet_wrap(vars(!!sym("cluster_id"))) +
+    theme_bw() +
+    theme(axis.text = element_text(size = 5),
+          axis.title = element_text(size = 8, face = "bold"),  
+          axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+### tSNE
+
+```{r, message=FALSE, warning=FALSE, fig.height=12, fig.width=12}
+tsne_list <- list()
+  
+p1 <- plotTSNE(scae_com, colour_by="cluster_id") + theme_bw()
+tsne_list <- c(tsne_list, list(p1))
+  
+immune_features <- rownames(scae_com[rowData(scae_com)$NI_I == "I", ])
+for (feature in immune_features){
+  p2 <- plotReducedDim(scae_com, dimred = "TSNE", by_exprs_values = "logcounts", colour_by = feature) + theme_bw() +
+    scale_colour_gradient2(name = feature, low = "lightblue", mid = "lightblue", high = "darkred", na.value = "gray80", guide = "colourbar")
+  tsne_list <- c(tsne_list, list(p2))
+}
+
+plot_grid(plotlist = tsne_list, ncol = 3)
+```
+
+### Dot plots
+
+```{r}
+lbls <- rownames(scae_com[rowData(scae_com)$Quant_type == "A", ])
+fig4b <- plotDots(scae_com, features=factor(lbls, levels = rev(lbls)), group="Sample", color = c("grey", "blue", "orange", "red", "darkred")) +
+  theme(axis.title.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 14),
+        axis.text.y = element_text(size = 14),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 14))
+ggsave("Fig4b.pdf", fig4b, height = 4, width = 6)
+save(fig4b, file = "fig4b.RData")
+```
+
+# Session
+
+```{r sessionInfo, cache = 0}
+sessionInfo()
+```
+
