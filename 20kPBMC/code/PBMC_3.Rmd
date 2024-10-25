@@ -1,0 +1,198 @@
+---
+title: "scIGD on 20k PBMC"
+author: "Ahmad Al Ajami"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    keep_md: false
+    toc: true
+    toc_float: true
+    toc_depth: 5
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, include=TRUE, message=FALSE, cache = FALSE}
+suppressPackageStartupMessages({
+library(SingleCellAlleleExperiment)
+library(tidyverse)
+library(gridExtra)
+library(DropletUtils)
+library(BiocParallel)
+library(scDblFinder)
+library(Matrix)
+library(AnnotationHub)
+library(cowplot)
+library(scran)
+library(scater)
+library(pheatmap)
+library(CATALYST)
+})
+```
+
+```{r}
+scae <- readRDS("../intermediate_files/scae.Rds")
+```
+
+```{r, fig.asp=0.4}
+set.seed(42L)
+
+genes <- rownames(scae[rowData(scae)$Quant_type == "G", ])
+gene_var <- modelGeneVar(scae[genes, ])
+chosen_hvgs <- getTopHVGs(gene_var, prop=0.3)
+
+scae <- runPCA(scae, subset_row=chosen_hvgs, BSPARAM=BiocSingular::RandomParam())
+scae <- runTSNE(scae, dimred="PCA")
+scae <- runUMAP(scae, dimred="PCA")
+
+g <- buildSNNGraph(scae, k=50, use.dimred="PCA")
+clusters <- igraph::cluster_louvain(g)$membership
+scae$cluster_id <- as.factor(clusters)
+
+p1 <- plotTSNE(scae, colour_by="cluster_id") + theme_bw()
+p2 <- plotUMAP(scae, colour_by="cluster_id") + theme_bw()
+plot_grid(p1, p2, ncol = 2)
+```
+
+```{r, eval=FALSE}
+#saveRDS(scae, "scae_clustering.Rds")
+```
+
+# Cell type annotation
+
+```{r}
+scae <- readRDS("../intermediate_files/scae_clustering.Rds")
+
+scae$cell_type <- case_when(
+  scae$cluster_id == 1 ~ "Monocytes I",
+  scae$cluster_id == 2 ~ "T cells I",
+  scae$cluster_id == 3 ~ "NK cells",
+  scae$cluster_id == 4 ~ "Monocytes II",
+  scae$cluster_id == 5 ~ "T cells II",
+  scae$cluster_id == 6 ~ "B cells",
+  scae$cluster_id == 7 ~ "Monocytes III",
+  scae$cluster_id == 8 ~ "Dendritic cells"
+  )
+
+colData(scae)$cell_type <- factor(colData(scae)$cell_type, levels = c("Monocytes I","Monocytes II", "Monocytes III",
+                                                                      "B cells", "Dendritic cells", "NK cells",
+                                                                      "T cells I", "T cells II"))
+
+library(RColorBrewer)
+
+color_palette <- brewer.pal(8, "Dark2")
+fig4c <- plotTSNE(scae, colour_by = "cell_type") + 
+    theme_bw() +
+    theme(axis.title.x = element_text(size = 14),
+          axis.title.y = element_text(size = 14),
+          axis.text.x = element_text(size = 14),
+          axis.text.y = element_text(size = 14),
+          legend.title = element_blank(),
+          legend.text = element_text(size = 14)) +
+    scale_color_manual(values = color_palette) +
+    coord_fixed()
+
+ggsave("Fig4c.pdf", fig4c, height = 5, width = 6)
+save(fig4c, file = "fig4c.RData")
+```
+
+```{r}
+scae <- scae[rownames(scae)[!is.na(rowData(scae)$Symbol)], ]
+rownames(scae) <- rowData(scae)$Symbol
+markers <- findMarkers(scae, groups=scae$cell_type)
+mark_per_clus <- sapply(markers, function(u){
+  genes <- rownames(u[u$Top %in% 1:2, ])})
+
+'%nin%' <- Negate('%in%')
+umarks <- unique(unlist(mark_per_clus))
+umarks <- setdiff(umarks, c("DRA*01:01:01:01", "HLA-DRA", "HLA_class_II"))
+suppfig2a <- plotGroupedHeatmap(scae, features=umarks, group="cell_type",
+                   center=TRUE, zlim=c(-2, 2), cluster_rows = TRUE, 
+                   treeheight_col = 5, fontsize=10)
+ggsave("Suppfig2a.pdf", suppfig2a, height = 6, width = 6)
+save(suppfig2a, file = "suppfig2a.RData")
+```
+
+# Visualization of HLA/immune features
+
+## Example of a gene and its alleles
+
+```{r, message=FALSE, fig.height=4, fig.width=12}
+p1 <- plotReducedDim(scae, dimred = "TSNE", by_exprs_values = "logcounts", colour_by = "HLA-DQB1") + theme_bw() + theme(legend.position="bottom") +
+  scale_colour_gradient2(name = "HLA-DQB1", low = "lightblue", mid = "lightblue", high = "darkred", na.value = "gray80", guide = "colourbar")
+
+p2 <- plotReducedDim(scae, dimred = "TSNE", by_exprs_values = "logcounts", colour_by = "DQB1*06:03:01:01") + theme_bw() + theme(legend.position="bottom") +
+  scale_colour_gradient2(name = "DQB1*06:03:01:01", low = "lightblue", mid = "lightblue", high = "darkred", na.value = "gray80", guide = "colourbar")
+
+p3 <- plotReducedDim(scae, dimred = "TSNE", by_exprs_values = "logcounts", colour_by = "DQB1*02:02:01:01") + theme_bw() + theme(legend.position="bottom") +
+  scale_colour_gradient2(name = "DQB1*02:02:01:01", low = "lightblue", mid = "lightblue", high = "darkred", na.value = "gray80", guide = "colourbar")
+
+plot_grid(plotlist = list(p1, p2, p3), ncol = 3, labels = c("A", "B", "C"))
+```
+
+## Focusing on Monocyte clusters
+
+Monocyte clusters = C1,4,7
+
+```{r}
+# class II
+lookup <- read.csv(file.path("data/scigd/", "lookup_table_HLA.csv"))
+class_II <- lookup[lookup$Function == "HLA_class_II", "Allele"]
+```
+
+```{r, fig.height=8}
+'%nin%' <- Negate('%in%')
+# focusing only on functional class of HLA II -- excluding alleles and genes
+new_markers <- lapply(markers, function(x){
+  alleles_genes <- c(class_II, unique(lookup[lookup$Function == "HLA_class_II", "Gene"]))
+  x <- x[rownames(x) %nin% alleles_genes, ]
+})
+
+# top 10 up- and 10 down- between clusters 1, 4, 7
+m1 <- as.data.frame(new_markers$`Monocytes I`) %>% dplyr::slice_max(order_by = logFC.Monocytes.II, n = 10) %>% rownames()
+m11 <- as.data.frame(new_markers$`Monocytes I`) %>% dplyr::slice_min(order_by = logFC.Monocytes.II, n = 10) %>% rownames()
+m2 <- as.data.frame(new_markers$`Monocytes I`) %>% dplyr::slice_max(order_by = logFC.Monocytes.III, n = 10) %>% rownames()
+m22 <- as.data.frame(new_markers$`Monocytes I`) %>% dplyr::slice_min(order_by = logFC.Monocytes.III, n = 10) %>% rownames()
+m3 <- as.data.frame(new_markers$`Monocytes II`) %>% dplyr::slice_max(order_by = logFC.Monocytes.III, n = 10) %>% rownames()
+m33 <- as.data.frame(new_markers$`Monocytes II`) %>% dplyr::slice_min(order_by = logFC.Monocytes.III, n = 10) %>% rownames()
+m <- unique(c(m1, m11, m2, m22, m3, m33))
+
+fig4e <- plotGroupedHeatmap(scae[, scae$cell_type %in% c("Monocytes I", "Monocytes II", "Monocytes III")], features=m, group="cell_type",
+                   center=TRUE, zlim=c(-2, 2), cluster_rows = TRUE, 
+                   treeheight_col = 5, fontsize=10)
+ggsave("Fig4e.pdf", fig4e, height = 7, width = 7)
+save(fig4e, file = "fig4e.RData")
+```
+
+```{r, fig.height=6}
+hla_dq <- c("DQA1*01:03:01:01", "DQA1*02:01:01:01", "DQB1*06:03:01:01", "DQB1*02:02:01:01")
+
+plotExpression(scae[, scae$cluster_id %in% c(1, 4, 7)], class_II, x = "cluster_id", ncol = 3) +
+  theme_bw()
+
+fig4d <- plotExpression(scae[, scae$cell_type %in% c("Monocytes I", "Monocytes II", "Monocytes III")], hla_dq, 
+               x = "cell_type", colour_by = "cell_type", ncol = 4) +
+  scale_color_manual(values = color_palette[1:3]) +
+  theme_bw() +
+  labs(y = "expression (logcounts)") + 
+  theme(strip.text = element_text(size = 14),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 14),
+        #axis.text.x = element_text(angle = 45, hjust = 1, size=14),
+        axis.text.x = element_blank(),
+        axis.text.y = element_text(size = 14),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 14))
+
+ggsave("Fig4d.pdf", fig4d, height = 2.5, width = 10)
+save(fig4d, file = "fig4d.RData")
+```
+
+# Session
+
+```{r sessionInfo, cache = 0}
+sessionInfo()
+```
