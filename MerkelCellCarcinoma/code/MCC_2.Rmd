@@ -100,87 +100,87 @@ num_alleles <- length(alleles)
 similarity_matrix <- matrix(NA, nrow = num_alleles, ncol = num_alleles)
 
 # Fill in the similarity scores for A alleles
-similarity_matrix[1, 2] <- 99.12
-similarity_matrix[1, 3] <- 96.11
-similarity_matrix[1, 4] <- 97.23
-similarity_matrix[2, 3] <- 96.00
-similarity_matrix[2, 4] <- 97.15
-similarity_matrix[3, 4] <- 96.06
+similarity_matrix[1, 2] <- 99.1
+similarity_matrix[1, 3] <- 96.1
+similarity_matrix[1, 4] <- 97.3
+similarity_matrix[2, 3] <- 95.9
+similarity_matrix[2, 4] <- 97.2
+similarity_matrix[3, 4] <- 96.0
 
 # Fill in the similarity scores for B alleles
-similarity_matrix[5, 6] <- 88.01
-similarity_matrix[5, 7] <- 95.54
-similarity_matrix[5, 8] <- 95.49
-similarity_matrix[6, 7] <- 86.11
-similarity_matrix[6, 8] <- 85.60
-similarity_matrix[7, 8] <- 97.85
+similarity_matrix[5, 6] <- 88.0
+similarity_matrix[5, 7] <- 95.5
+similarity_matrix[5, 8] <- 95.5
+similarity_matrix[6, 7] <- 86.1
+similarity_matrix[6, 8] <- 85.5
+similarity_matrix[7, 8] <- 97.9
 
 # Fill in the similarity scores for C alleles
-similarity_matrix[9, 10] <- 93.20
-similarity_matrix[9, 11] <- 93.11
-similarity_matrix[9, 12] <- 93.01
-similarity_matrix[10, 11] <- 98.21
-similarity_matrix[10, 12] <- 99.23
-similarity_matrix[11, 12] <- 98.14
+similarity_matrix[9, 10] <- 93.2
+similarity_matrix[9, 11] <- 93.1
+similarity_matrix[9, 12] <- 93.0
+similarity_matrix[10, 11] <- 98.2
+similarity_matrix[10, 12] <- 99.2
+similarity_matrix[11, 12] <- 98.2
 
 # Fill in cross-allele scores
-similarity_matrix[1, 5] <- 72.25
-similarity_matrix[1, 6] <- 80.21
-similarity_matrix[1, 7] <- 70.72
-similarity_matrix[1, 8] <- 70.79
-similarity_matrix[1, 9] <- 71.16
-similarity_matrix[1, 10] <- 67.41
-similarity_matrix[1, 11] <- 67.53
-similarity_matrix[1, 12] <- 67.42
+similarity_matrix[1, 5] <- 71.8
+similarity_matrix[1, 6] <- 79.9
+similarity_matrix[1, 7] <- 70.3
+similarity_matrix[1, 8] <- 70.3
+similarity_matrix[1, 9] <- 70.6
+similarity_matrix[1, 10] <- 66.9
+similarity_matrix[1, 11] <- 66.9
+similarity_matrix[1, 12] <- 66.9
 
-similarity_matrix[2, 5] <- 72.39
-similarity_matrix[2, 6] <- 80.45
-similarity_matrix[2, 7] <- 70.93
-similarity_matrix[2, 8] <- 70.93
-similarity_matrix[2, 9] <- 71.38
-similarity_matrix[2, 10] <- 67.63
-similarity_matrix[2, 11] <- 67.70
-similarity_matrix[2, 12] <- 67.64
+similarity_matrix[2, 5] <- 72.0
+similarity_matrix[2, 6] <- 80.1
+similarity_matrix[2, 7] <- 70.5
+similarity_matrix[2, 8] <- 70.5
+similarity_matrix[2, 9] <- 70.8
+similarity_matrix[2, 10] <- 67.1
+similarity_matrix[2, 11] <- 67.1
+similarity_matrix[2, 12] <- 67.1
 
-similarity_matrix[3, 5] <- 72.30
-similarity_matrix[3, 6] <- 80.37
-similarity_matrix[3, 7] <- 70.81
-similarity_matrix[3, 8] <- 70.89
-similarity_matrix[3, 9] <- 71.54
-similarity_matrix[3, 10] <- 67.48
-similarity_matrix[3, 11] <- 67.81
-similarity_matrix[3, 12] <- 67.56
+similarity_matrix[3, 5] <- 72.0
+similarity_matrix[3, 6] <- 80.1
+similarity_matrix[3, 7] <- 70.5
+similarity_matrix[3, 8] <- 70.6
+similarity_matrix[3, 9] <- 70.9
+similarity_matrix[3, 10] <- 67.0
+similarity_matrix[3, 11] <- 67.1
+similarity_matrix[3, 12] <- 67.1
 
-similarity_matrix[4, 5] <- 72.76
-similarity_matrix[4, 6] <- 80.60
-similarity_matrix[4, 7] <- 70.99
-similarity_matrix[4, 8] <- 71.20
-similarity_matrix[4, 9] <- 71.46
-similarity_matrix[4, 10] <- 67.45
-similarity_matrix[4, 11] <- 67.61
-similarity_matrix[4, 12] <- 67.53
+similarity_matrix[4, 5] <- 72.4
+similarity_matrix[4, 6] <- 80.3
+similarity_matrix[4, 7] <- 70.6
+similarity_matrix[4, 8] <- 70.8
+similarity_matrix[4, 9] <- 70.8
+similarity_matrix[4, 10] <- 66.9
+similarity_matrix[4, 11] <- 67.0
+similarity_matrix[4, 12] <- 67.1
   
-similarity_matrix[5, 9] <- 82.35
-similarity_matrix[5, 10] <- 84.14
-similarity_matrix[5, 11] <- 83.83
-similarity_matrix[5, 12] <- 84.13
+similarity_matrix[5, 9] <- 82.3
+similarity_matrix[5, 10] <- 84.1
+similarity_matrix[5, 11] <- 83.7
+similarity_matrix[5, 12] <- 84.0
 
-similarity_matrix[6, 9] <- 79.87
-similarity_matrix[6, 10] <- 75.97
-similarity_matrix[6, 11] <- 75.94
-similarity_matrix[6, 12] <- 76.05
+similarity_matrix[6, 9] <- 79.8
+similarity_matrix[6, 10] <- 75.8
+similarity_matrix[6, 11] <- 75.8
+similarity_matrix[6, 12] <- 75.9
 
-similarity_matrix[7, 9] <- 80.64
-similarity_matrix[7, 10] <- 85.64
-similarity_matrix[7, 11] <- 85.19
-similarity_matrix[7, 12] <- 85.55
+similarity_matrix[7, 9] <- 80.5
+similarity_matrix[7, 10] <- 85.6
+similarity_matrix[7, 11] <- 85.1
+similarity_matrix[7, 12] <- 85.5
   
-similarity_matrix[8, 9] <- 80.65
-similarity_matrix[8, 10] <- 85.60
-similarity_matrix[8, 11] <- 85.39
-similarity_matrix[8, 12] <- 85.58
+similarity_matrix[8, 9] <- 80.5
+similarity_matrix[8, 10] <- 85.5
+similarity_matrix[8, 11] <- 85.2
+similarity_matrix[8, 12] <- 85.4
 
-diag(similarity_matrix) <- 100.00
+diag(similarity_matrix) <- 100.0
 
 rownames(similarity_matrix) <- alleles
 colnames(similarity_matrix) <- alleles
