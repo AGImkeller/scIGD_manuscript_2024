@@ -1,8 +1,10 @@
 All data in this repo are part of the paper "Unraveling Immunogenomic Diversity in Single-Cell Data". 
 
-This includes: code, data, and intermediate files.
+This includes code and the data generated from Multiple Sequence Alignment.
 
-They are used to generate the figures in the paper.
+Input data and Rds intermediate files are uploaded to Zenodo: https://doi.org/10.5281/zenodo.14034261
+
+Code, data, and intermediate files are used to generate the figures in the paper.
 
 Data analysis was performed on:
 -------------------------------
