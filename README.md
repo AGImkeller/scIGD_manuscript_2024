@@ -1,8 +1,8 @@
-All data in this repo are part of the paper "Unraveling Immunogenomic Diversity in Single-Cell Data". 
+All data in this repo are part of the paper "Unraveling immunogenomic diversity: a comprehensive workflow for HLA typing and expression analysis in single-cell RNA-seq data". 
 
 This includes code and the data generated from Multiple Sequence Alignment.
 
-Input data and Rds intermediate files are uploaded to Zenodo: https://doi.org/10.5281/zenodo.14034261
+Input data and Rds intermediate files are uploaded to Zenodo: https://doi.org/10.5281/zenodo.14033960.
 
 Code, data, and intermediate files are used to generate the figures in the paper.
 
