@@ -1,4 +1,4 @@
-All data in this repo are part of the paper "Unraveling immunogenomic diversity: a comprehensive workflow for HLA typing and expression analysis in single-cell RNA-seq data". 
+All data in this repo are part of the paper "A comprehensive workflow for allele specific immune gene quantification and expression analysis in single-cell RNA-seq data". 
 
 This includes code and the data generated from Multiple Sequence Alignment.
 
