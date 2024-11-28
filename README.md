@@ -1,10 +1,14 @@
-All data in this repo are part of the paper "A comprehensive workflow for allele specific immune gene quantification and expression analysis in single-cell RNA-seq data". 
+This repository contains the data and scripts associated with the paper:
 
-This includes code and the data generated from Multiple Sequence Alignment.
+**"A comprehensive workflow for allele-specific immune gene quantification and expression analysis in single-cell RNA-seq data"**
+
+**Authors:** Ahmad Al Ajami, Jonas Schuck, Federico Marini, Katharina Imkeller.
 
 Input data and Rds intermediate files are uploaded to Zenodo: https://doi.org/10.5281/zenodo.14033960.
 
 Code, data, and intermediate files are used to generate the figures in the paper.
+
+Please cite the paper if you use this data or workflow in your research.
 
 Data analysis was performed on:
 -------------------------------
