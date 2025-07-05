@@ -1,0 +1,189 @@
+---
+title: "manuscript revision"
+author: "Ahmad Al Ajami"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(scales)
+
+data1 <- read_csv("Data Sheet 3.CSV", show_col_types = FALSE)
+data1 <- data1 %>% 
+  filter(str_ends(sample, "-BL")) %>% 
+  filter(genotyper %in% c("Ground truth", "arcasHLA")) %>% 
+  arrange(sample)
+```
+
+# Class I
+
+```{r}
+data1_classI <- data1 %>% 
+    select(sample, genotyper, A_1, A_2, B_1, B_2, C_1, C_2)
+data1_classI$genotyper[data1_classI$genotyper == "Ground truth"] <- "GroundTruth"
+
+data1_classI <- data1_classI %>%
+  pivot_wider(
+    names_from   = genotyper,
+    values_from  = c(A_1, A_2, B_1, B_2, C_1, C_2),
+    names_sep    = "_"
+  ) %>% 
+  drop_na() 
+
+data1_classI <- data1_classI %>%
+  mutate(
+        across(
+            -sample,
+          #  ~ sub("^([^:]+:[^:]+).*$", "\\1", .x)
+          ~ sub(":.*", "", .x)
+        )
+    )
+
+data1_classI <- data1_classI %>%
+  rowwise() %>%
+  mutate(
+    A = {
+      gt <- c(A_1_GroundTruth, A_2_GroundTruth)
+      pr <- c(A_1_arcasHLA, A_2_arcasHLA)
+      sum( pmin( table(gt)[intersect(gt, pr)], table(pr)[intersect(gt, pr)] ) )
+    },
+    B = {
+      gt <- c(B_1_GroundTruth, B_2_GroundTruth)
+      pr <- c(B_1_arcasHLA, B_2_arcasHLA)
+      sum( pmin( table(gt)[intersect(gt, pr)], table(pr)[intersect(gt, pr)] ) )
+    },
+    C = {
+      gt <- c(C_1_GroundTruth, C_2_GroundTruth)
+      pr <- c(C_1_arcasHLA, C_2_arcasHLA)
+      sum( pmin( table(gt)[intersect(gt, pr)], table(pr)[intersect(gt, pr)] ) )
+    }
+  ) %>%
+  ungroup() %>%
+  mutate(scoreClassI = (A + B + C) / 3)
+```
+
+```{r}
+data1_classI_df <- data1_classI %>% 
+  select(A, B, C) %>% 
+  pivot_longer(
+    cols = c("A", "B", "C"),
+    names_to  = "locus",
+    values_to = "score"
+  )
+
+data1_classI_df <- data1_classI_df %>% 
+  count(locus, score) %>% 
+  group_by(locus) %>% 
+  mutate(pct = n / sum(n)) %>% 
+  ungroup()
+
+p <- ggplot(data1_classI_df, aes(x = factor(score), y = pct, fill = locus)) +
+  geom_col(position = "dodge") +
+  scale_x_discrete(name = "number of matching alleles") +
+  scale_y_continuous(name = "percentage of samples", labels = label_number(scale = 100, accuracy = 1)) +
+  labs(fill = "gene locus") +
+  theme_bw() +
+  theme(axis.title.x = element_text(size = 14),
+        axis.title.y = element_text(size = 14),
+        axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 14),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 14))
+
+ggsave("arcasHLAccuracyClassI.pdf", p, height = 4, width = 6)
+```
+
+# Class II
+
+```{r}
+data1_classII <- data1 %>% 
+    select(sample, genotyper, DPA1_1, DPA1_2, DPB1_1, DPB1_2, DQA1_1, DQA1_2, DQB1_1, DQB1_2, DRB1_1, DRB1_2)
+data1_classII$genotyper[data1_classII$genotyper == "Ground truth"] <- "GroundTruth"
+
+data1_classII <- data1_classII %>%
+  pivot_wider(
+    names_from   = genotyper,
+    values_from  = c(DPA1_1, DPA1_2, DPB1_1, DPB1_2, DQA1_1, DQA1_2, DQB1_1, DQB1_2, DRB1_1, DRB1_2),
+    names_sep    = "_"
+  ) %>% 
+  drop_na() 
+
+data1_classII <- data1_classII %>%
+  mutate(
+        across(
+            -sample,
+          #  ~ sub("^([^:]+:[^:]+).*$", "\\1", .x)
+          ~ sub(":.*", "", .x)
+        )
+    )
+
+data1_classII <- data1_classII %>%
+  rowwise() %>%
+  mutate(
+    DPA1 = {
+      gt <- c(DPA1_1_GroundTruth, DPA1_2_GroundTruth)
+      pr <- c(DPA1_1_arcasHLA, DPA1_2_arcasHLA)
+      sum( pmin( table(gt)[intersect(gt, pr)], table(pr)[intersect(gt, pr)] ) )
+    },
+    DPB1 = {
+      gt <- c(DPB1_1_GroundTruth, DPB1_2_GroundTruth)
+      pr <- c(DPB1_1_arcasHLA, DPB1_2_arcasHLA)
+      sum( pmin( table(gt)[intersect(gt, pr)], table(pr)[intersect(gt, pr)] ) )
+    },
+    DQA1 = {
+      gt <- c(DQA1_1_GroundTruth, DQA1_2_GroundTruth)
+      pr <- c(DQA1_1_arcasHLA, DQA1_2_arcasHLA)
+      sum( pmin( table(gt)[intersect(gt, pr)], table(pr)[intersect(gt, pr)] ) )
+    },
+    DQB1 = {
+      gt <- c(DQB1_1_GroundTruth, DQB1_2_GroundTruth)
+      pr <- c(DQB1_1_arcasHLA, DQB1_2_arcasHLA)
+      sum( pmin( table(gt)[intersect(gt, pr)], table(pr)[intersect(gt, pr)] ) )
+    },
+    DRB1 = {
+      gt <- c(DRB1_1_GroundTruth, DRB1_2_GroundTruth)
+      pr <- c(DRB1_1_arcasHLA, DRB1_2_arcasHLA)
+      sum( pmin( table(gt)[intersect(gt, pr)], table(pr)[intersect(gt, pr)] ) )
+    }
+  ) %>%
+  ungroup() %>%
+  mutate(scoreClassI = (DPA1 + DPB1 + DQA1 + DQB1 + DRB1) / 5)
+```
+
+```{r}
+data1_classII_df <- data1_classII %>% 
+  select(DPA1, DPB1, DQA1, DQB1, DRB1) %>% 
+  pivot_longer(
+    cols = c("DPA1", "DPB1", "DQA1", "DQB1", "DRB1"),
+    names_to  = "locus",
+    values_to = "score"
+  )
+
+data1_classII_df <- data1_classII_df %>% 
+  count(locus, score) %>% 
+  group_by(locus) %>% 
+  mutate(pct = n / sum(n)) %>% 
+  ungroup()
+
+p <- ggplot(data1_classII_df, aes(x = factor(score), y = pct, fill = locus)) +
+  geom_col(position = "dodge") +
+  scale_x_discrete(name = "number of matching alleles") +
+  scale_y_continuous(name = "percentage of samples", labels = label_number(scale = 100, accuracy = 1), breaks = seq(0, 0.8, by = 0.2)) +
+  labs(fill = "gene locus") +
+  theme_bw() +
+  theme(axis.title.x = element_text(size = 14),
+        axis.title.y = element_text(size = 14),
+        axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 14),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 14))
+
+ggsave("arcasHLAccuracyClassII.pdf", p, height = 4, width = 8)
+```
+
+
